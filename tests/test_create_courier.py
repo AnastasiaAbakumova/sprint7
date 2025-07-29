@@ -1,3 +1,4 @@
+import allure
 from app.courier import register_new_courier_and_return_login_password
 import requests
 import random
@@ -11,6 +12,7 @@ def generate_random_string(length=10):
     return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
 
 
+@allure.title("Успешное создание курьера и вход")
 def test_create_courier_success():
     creds = register_new_courier_and_return_login_password()
     assert len(creds) == 3, "Курьер не создан — список пустой или неполный"
@@ -21,6 +23,7 @@ def test_create_courier_success():
     assert "id" in response.json(), "В ответе нет ID курьера"
 
 
+@allure.title("Запрет создания курьера с дублирующимся логином")
 def test_cannot_create_duplicate_courier():
     login = generate_random_string()
     password = generate_random_string()
@@ -35,6 +38,7 @@ def test_cannot_create_duplicate_courier():
     assert response2.status_code == 409, f"Ожидали 409, получили {response2.status_code}"
 
 
+@allure.title("Создание курьера с отсутствующими обязательными полями")
 def test_create_courier_missing_required_fields():
     payload = {"password": generate_random_string(), "firstName": generate_random_string()}
     response = requests.post(BASE_URL, data=payload)
@@ -49,6 +53,7 @@ def test_create_courier_missing_required_fields():
     assert response.status_code == 201, "Ожидали успешное создание без firstName"
 
 
+@allure.title("Проверка кода ответа при регистрации курьера")
 def test_register_courier_response_code():
     payload = {
         "login": generate_random_string(),
@@ -59,6 +64,7 @@ def test_register_courier_response_code():
     assert response.status_code == 201, f"Ожидали 201, получили {response.status_code}"
 
 
+@allure.title("Проверка ответа ok True при регистрации")
 def test_register_courier_returns_ok_true():
     payload = {
         "login": generate_random_string(),
@@ -67,9 +73,10 @@ def test_register_courier_returns_ok_true():
     }
     response = requests.post(BASE_URL, data=payload)
     assert response.status_code == 201, f"Ожидали 201, получили {response.status_code}"
-    assert response.json() == {"ok": True}, f"Ожидали {{'ok': True}}, получили {response.json()}"
+    assert response.json() == {"ok": True}, f"Ожидали 'ok': True, получили {response.json()}"
 
 
+@allure.title("Проверка 400 при отсутствии обязательных полей")
 def test_register_courier_missing_required_fields_loop():
     base_payload = {
         "login": generate_random_string(),
@@ -85,6 +92,7 @@ def test_register_courier_missing_required_fields_loop():
         assert response.status_code == 400, f"При отсутствии '{field}' ожидали 400, получили {response.status_code}"
 
 
+@allure.title("Запрет регистрации с дублирующим логином")
 def test_register_courier_duplicate_login():
     login = generate_random_string()
     password1 = generate_random_string()

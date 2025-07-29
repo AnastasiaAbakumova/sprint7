@@ -2,18 +2,20 @@ import pytest
 import requests
 import random
 import string
+import allure
 
 BASE_URL = 'https://qa-scooter.praktikum-services.ru/api/v1/orders'
 
 def generate_random_string(length=8):
     return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
 
+@allure.title("Создание заказа с разными вариантами цвета")
 @pytest.mark.parametrize("color", [
-    ["BLACK"],       # только черный
-    ["GREY"],        # только серый
+    ["BLACK"],        # только черный
+    ["GREY"],         # только серый
     ["BLACK", "GREY"],# оба цвета
-    [],              # без цвета
-    None             # поле color отсутствует
+    [],               # без цвета
+    None              # поле color отсутствует
 ])
 def test_create_order_with_various_colors(color):
     payload = {
@@ -27,7 +29,6 @@ def test_create_order_with_various_colors(color):
         "comment": "Тестовый заказ"
     }
 
-    # Если color не None и не пустой список — добавляем в payload
     if color is not None and color != []:
         payload["color"] = color
 
