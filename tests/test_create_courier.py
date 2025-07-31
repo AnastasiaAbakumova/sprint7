@@ -1,110 +1,62 @@
 import allure
-from app.courier import register_new_courier_and_return_login_password
 import requests
-import random
-import string
-
-BASE_URL = 'https://qa-scooter.praktikum-services.ru/api/v1/courier'
-LOGIN_URL = 'https://qa-scooter.praktikum-services.ru/api/v1/courier/login'
+from app.helpers import login_courier, generate_random_string, register_courier
+from app.urls import COURIER_REGISTER, COURIER_LOGIN
 
 
-def generate_random_string(length=10):
-    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
+class TestCourierAuth:
 
+    @allure.title("Курьер может авторизоваться")
+    def test_courier_can_login(self):
+        login = generate_random_string()
+        password = generate_random_string()
+        first_name = generate_random_string()
 
-@allure.title("Успешное создание курьера и вход")
-def test_create_courier_success():
-    creds = register_new_courier_and_return_login_password()
-    assert len(creds) == 3, "Курьер не создан — список пустой или неполный"
+        reg_response = register_courier(login, password, first_name)
+        assert reg_response.status_code == 201, "Не удалось зарегистрировать курьера"
 
-    payload = {"login": creds[0], "password": creds[1]}
-    response = requests.post(LOGIN_URL, data=payload)
-    assert response.status_code == 200, "Не удалось залогиниться после создания курьера"
-    assert "id" in response.json(), "В ответе нет ID курьера"
+        response = login_courier(login, password)
+        assert response.status_code == 200
+        assert 'id' in response.json()
 
+    @allure.title("Ошибка при авторизации без логина")
+    def test_courier_login_missing_login(self):
+        response = requests.post(COURIER_LOGIN, data={"password": "any_password"})
+        assert response.status_code == 400
 
-@allure.title("Запрет создания курьера с дублирующимся логином")
-def test_cannot_create_duplicate_courier():
-    login = generate_random_string()
-    password = generate_random_string()
-    first_name = generate_random_string()
+    @allure.title("Ошибка при авторизации с неверным логином")
+    def test_courier_login_wrong_login(self):
+        response = login_courier("wronglogin", "any_password")
+        assert response.status_code in [400, 404]
 
-    payload = {"login": login, "password": password, "firstName": first_name}
+    @allure.title("Ошибка при авторизации с неверным паролем")
+    def test_courier_login_wrong_password(self):
+        login = generate_random_string()
+        password = generate_random_string()
+        first_name = generate_random_string()
 
-    response1 = requests.post(BASE_URL, data=payload)
-    assert response1.status_code == 201, f"Ожидали 201, получили {response1.status_code}"
+        reg_response = register_courier(login, password, first_name)
+        assert reg_response.status_code == 201, "Не удалось зарегистрировать курьера"
 
-    response2 = requests.post(BASE_URL, data=payload)
-    assert response2.status_code == 409, f"Ожидали 409, получили {response2.status_code}"
+        response = login_courier(login, "wrongpassword")
+        assert response.status_code in [400, 404]
 
+    @allure.title("Авторизация несуществующего пользователя")
+    def test_login_nonexistent_user(self):
+        response = login_courier("nonexistent_user_123456", "some_password")
+        assert response.status_code == 404
+        msg = response.json().get("message", "").lower()
+        assert "учетная запись не найдена" in msg or "not found" in msg
 
-@allure.title("Создание курьера с отсутствующими обязательными полями")
-def test_create_courier_missing_required_fields():
-    payload = {"password": generate_random_string(), "firstName": generate_random_string()}
-    response = requests.post(BASE_URL, data=payload)
-    assert response.status_code == 400, "Ожидали 400 при отсутствии login"
+    @allure.title("Успешная авторизация возвращает id")
+    def test_successful_login_returns_id(self):
+        login = generate_random_string()
+        password = generate_random_string()
+        first_name = generate_random_string()
 
-    payload = {"login": generate_random_string(), "firstName": generate_random_string()}
-    response = requests.post(BASE_URL, data=payload)
-    assert response.status_code == 400, "Ожидали 400 при отсутствии password"
+        reg_response = register_courier(login, password, first_name)
+        assert reg_response.status_code == 201, "Не удалось зарегистрировать курьера"
 
-    payload = {"login": generate_random_string(), "password": generate_random_string()}
-    response = requests.post(BASE_URL, data=payload)
-    assert response.status_code == 201, "Ожидали успешное создание без firstName"
-
-
-@allure.title("Проверка кода ответа при регистрации курьера")
-def test_register_courier_response_code():
-    payload = {
-        "login": generate_random_string(),
-        "password": generate_random_string(),
-        "firstName": generate_random_string()
-    }
-    response = requests.post(BASE_URL, data=payload)
-    assert response.status_code == 201, f"Ожидали 201, получили {response.status_code}"
-
-
-@allure.title("Проверка ответа ok True при регистрации")
-def test_register_courier_returns_ok_true():
-    payload = {
-        "login": generate_random_string(),
-        "password": generate_random_string(),
-        "firstName": generate_random_string()
-    }
-    response = requests.post(BASE_URL, data=payload)
-    assert response.status_code == 201, f"Ожидали 201, получили {response.status_code}"
-    assert response.json() == {"ok": True}, f"Ожидали 'ok': True, получили {response.json()}"
-
-
-@allure.title("Проверка 400 при отсутствии обязательных полей")
-def test_register_courier_missing_required_fields_loop():
-    base_payload = {
-        "login": generate_random_string(),
-        "password": generate_random_string(),
-        "firstName": generate_random_string()
-    }
-    required_fields = ["login", "password"]
-
-    for field in required_fields:
-        payload = base_payload.copy()
-        payload.pop(field)
-        response = requests.post(BASE_URL, data=payload)
-        assert response.status_code == 400, f"При отсутствии '{field}' ожидали 400, получили {response.status_code}"
-
-
-@allure.title("Запрет регистрации с дублирующим логином")
-def test_register_courier_duplicate_login():
-    login = generate_random_string()
-    password1 = generate_random_string()
-    first_name1 = generate_random_string()
-
-    payload1 = {"login": login, "password": password1, "firstName": first_name1}
-    response1 = requests.post(BASE_URL, data=payload1)
-    assert response1.status_code == 201, f"Ожидали 201 при создании, получили {response1.status_code}"
-
-    password2 = generate_random_string()
-    first_name2 = generate_random_string()
-
-    payload2 = {"login": login, "password": password2, "firstName": first_name2}
-    response2 = requests.post(BASE_URL, data=payload2)
-    assert response2.status_code in [400, 409], f"Ожидали 400 или 409 при дублировании, получили {response2.status_code}"
+        login_response = login_courier(login, password)
+        assert login_response.status_code == 200
+        assert isinstance(login_response.json().get("id"), int)
