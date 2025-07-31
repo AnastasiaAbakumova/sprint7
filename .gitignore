@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pycache/
+*.pytest_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Виртуальные окружения
+venv/
+env/
+.venv/
+.env/
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.bak
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# Allure
+target/
+# Исключаем target полностью, но не исключаем allure-results
+# Если allure-results лежит в target, тогда нужно исключать с осторожностью
+
+# Если allure-results лежит отдельно, его не добавляем в .gitignore
+# allure-results/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
